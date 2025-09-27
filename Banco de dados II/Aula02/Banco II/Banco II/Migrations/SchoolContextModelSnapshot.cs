@@ -31,11 +31,13 @@ namespace Banco_II.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("ID");
 
-                    b.ToTable("Course", (string)null);
+                    b.ToTable("Courses");
                 });
 
             modelBuilder.Entity("Banco_II.Models.Student", b =>
@@ -57,7 +59,7 @@ namespace Banco_II.Migrations
 
                     b.HasKey("ID");
 
-                    b.ToTable("Student", (string)null);
+                    b.ToTable("Students");
                 });
 
             modelBuilder.Entity("Banco_II.Models.StudentCourses", b =>
@@ -73,6 +75,29 @@ namespace Banco_II.Migrations
                     b.HasIndex("CourseID");
 
                     b.ToTable("StudentCourses");
+                });
+
+            modelBuilder.Entity("Banco_II.Models.Subject", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
+
+                    b.Property<int>("CourseID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("CourseID");
+
+                    b.ToTable("Subjects");
                 });
 
             modelBuilder.Entity("Banco_II.Models.StudentCourses", b =>
@@ -94,9 +119,22 @@ namespace Banco_II.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("Banco_II.Models.Subject", b =>
+                {
+                    b.HasOne("Banco_II.Models.Course", "Course")
+                        .WithMany("Subjects")
+                        .HasForeignKey("CourseID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+                });
+
             modelBuilder.Entity("Banco_II.Models.Course", b =>
                 {
                     b.Navigation("StudentCourses");
+
+                    b.Navigation("Subjects");
                 });
 
             modelBuilder.Entity("Banco_II.Models.Student", b =>
