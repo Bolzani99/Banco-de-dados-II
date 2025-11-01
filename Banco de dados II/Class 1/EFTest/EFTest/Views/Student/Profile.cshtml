@@ -1,0 +1,154 @@
+﻿@using Microsoft.AspNetCore.Mvc.Rendering
+@model EFTest.Models.Students.Student
+
+@{
+    ViewData["Title"] = $"{Model.FirstMidName} {Model.LastName} Profile";
+
+    int? selectedCourseId = ViewBag.SelectedCourseId as int?;
+    var studentCourses = ViewBag.StudentCourses as List<SelectListItem> ?? new List<SelectListItem>();
+    var precomputedCourseModules = ViewBag.CourseModules as IEnumerable<dynamic>;
+}
+
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary">
+                <i class="fa-solid fa-user"></i> @Model.FirstMidName @Model.LastName
+            </h2>
+            <span class="text-muted">ID: @Model.ID</span>
+        </div>
+
+        <div class="text-end">
+            @if (selectedCourseId.HasValue && selectedCourseId.Value > 0)
+            {
+                <form asp-controller="Student" asp-action="AddModuleToStudent" method="get" class="d-inline">
+                    <input type="hidden" name="studentId" value="@Model.ID" />
+                    <input type="hidden" name="courseId" value="@selectedCourseId" />
+                    <button type="submit" class="btn btn-success">
+                        <i class="fa-solid fa-plus"></i> Add Module
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <!-- Droplist curso -->
+    <form method="get" asp-action="Profile" asp-controller="Student">
+        <input type="hidden" name="id" value="@Model.ID" />
+        <div class="mb-4">
+            <label for="SelectedCourseId" class="form-label fw-bold">
+                <i class="fa-solid fa-book"></i> Select Course
+            </label>
+            @Html.DropDownList(
+                     "SelectedCourseId",
+                     studentCourses,
+                     "Select a course", // Placeholder
+                     new { @class = "form-select w-auto d-inline-block", onchange = "this.form.submit();" }
+                     )
+        </div>
+    </form>
+
+    @if (selectedCourseId.HasValue && selectedCourseId.Value > 0)
+    {
+        <div class="card shadow-lg">
+            <div class="card-body p-0">
+                @{
+                    IEnumerable<dynamic> rows = precomputedCourseModules ?? new List<dynamic>();
+                }
+
+                @if (!rows.Any())
+                {
+                    <div class="p-4">
+                        <p class="text-muted mb-0">No modules found for this course</p>
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-dark text-center">
+                            <tr>
+                                <th><i class="fa-solid fa-layer-group"></i> Semester</th>
+                                <th><i class="fa-solid fa-id-card"></i> ID</th>
+                                <th class="text-start"><i class="fa-solid fa-bookmark"></i> Module</th>
+                                <th><i class="fa-solid fa-clock"></i> Hrs</th>
+                                <th><i class="fa-solid fa-percent"></i> Freq</th>
+                                <th><i class="fa-solid fa-chart-simple"></i> Avg</th>
+                                <th><i class="fa-solid fa-calendar-days"></i> Period</th>
+                                <th><i class="fa-solid fa-list"></i> Status</th>
+                                <th><i class="fa-solid fa-ban"></i> Cancel</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var m in rows)
+                            {
+                                int semester = m.Semester ?? 0;
+                                int moduleId = m.ModuleId ?? 0;
+                                string name = m.Name ?? "-";
+                                int? workload = m.WorkloadHours as int?;
+                                double? freq = m.Frequency as double?;
+                                double? grade = m.Grade as double?;
+                                DateTime? periodDt = m.Period as DateTime?;
+                                string rawStatus = (m.Status ?? "").ToString();
+                                string statusText = rawStatus switch
+                                {
+                                    "Approved" => "Approved",
+                                    "Failed" => "Failed",
+                                    "Enrolled" => "Enrolled",
+                                    "Canceled" => "Canceled",
+                                    "NotTaken" => "Not taken",
+                                    _ => rawStatus
+                                };
+                                string badgeClass = statusText switch
+                                {
+                                    "Approved" => "badge bg-success",
+                                    "Failed" => "badge bg-danger",
+                                    "Enrolled" => "badge bg-info text-dark",
+                                    "Canceled" => "badge bg-secondary",
+                                    "Not taken" => "badge bg-light text-dark",
+                                    _ => "badge bg-light text-dark"
+                                };
+
+                                <tr>
+                                    <td class="text-center">@semester</td>
+                                    <td class="text-center">@moduleId</td>
+                                    <td class="text-start">@name</td>
+                                    <td class="text-center">@(
+                                        (workload != null) ? workload.ToString() : "-")</td>
+
+                                    <td class="text-center">@(
+                                        (freq != null) ? $"{(int)Math.Round(freq.Value)}%" : "-")</td>
+
+                                    <td class="text-center">@(
+                                        (grade != null) ? string.Format("{0:0.0}", grade) : "-")</td>
+
+                                    <td class="text-center">@(
+                                        (periodDt != null) ? $"{(periodDt.Value.Month <= 6 ? 1 : 2)}/{periodDt.Value.Year}" : "-")</td>
+                                    <td class="text-center"><span class="@badgeClass">@statusText</span></td>
+
+                                    <!-- Cancelar -->
+                                    <td class="text-center">
+                                        @if (rawStatus == "Enrolled" || rawStatus == "Failed")
+                                        {
+                                            <form asp-controller="Student" asp-action="CancelModule" method="post"
+                                                  onsubmit="return confirm('Are you sure you want to cancel this module?');">
+                                                <input type="hidden" name="studentId" value="@Model.ID" />
+                                                <input type="hidden" name="moduleId" value="@moduleId" />
+                                                <input type="hidden" name="returnUrl" value="@Url.Action("Profile",
+                                                "Student", new { id = Model.ID, SelectedCourseId = selectedCourseId })" />
+
+                                                <button type="submit" class="btn btn-danger btn-sm px-2 py-1">
+                                                    <i class="fa-solid fa-ban"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    }
+</div>
